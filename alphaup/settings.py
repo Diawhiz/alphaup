@@ -31,7 +31,10 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
+if DEBUG:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
+else:
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Google News API Settings
 GOOGLE_NEWS_API_KEY = config('GOOGLE_NEWS_API_KEY')
@@ -47,7 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'news',
+    'news.apps.NewsConfig',
 ]
 
 MIDDLEWARE = [
