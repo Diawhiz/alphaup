@@ -1,12 +1,14 @@
+# urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from .views import ArticleViewSet, CommentViewSet, fetch_news, news_list
 
 router = DefaultRouter()
-router.register(r'articles', views.ArticleViewSet)
-router.register(r'comments', views.CommentViewSet)
+router.register(r'articles', ArticleViewSet)
+router.register(r'comments', CommentViewSet)
 
 urlpatterns = [
-    # path('', include(router.urls)),
-    path('', views.fetch_news, name='fetch-news'),
+    path('', news_list, name='news-list'),
+    path('api/', include(router.urls)),
+    path('api/fetch-news/', fetch_news, name='fetch-news'),
 ]

@@ -10,6 +10,9 @@ class Article(models.Model):
     summary = models.TextField()
     published_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    author = models.CharField(max_length=255, blank=True)
+    image = models.URLField(max_length=500, blank=True)
+    country = models.CharField(max_length=2, blank=True)
     
     class Meta:
         ordering = ['-published_at']

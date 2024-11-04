@@ -2,12 +2,28 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from newsapi import NewsApiClient
 from datetime import datetime, timedelta
 from .models import Article, Comment
 from .serializers import ArticleSerializer, CommentSerializer
 import requests
 from django.conf import settings
+
+def news_list(request):
+    category = request.GET.get('category', '')
+    
+    articles = Article.objects.all().order_by('-published_at')
+    if category:
+        articles = articles.filter(category=category)
+    
+    categories = Article.objects.values_list('category', flat=True).distinct()
+    
+    context = {
+        'articles': articles,
+        'categories': categories,
+        'selected_category': category
+    }
+    
+    return render(request, 'news/news_list.html', context)
 
 class ArticleViewSet(viewsets.ModelViewSet):
     queryset = Article.objects.all()
@@ -18,55 +34,85 @@ class ArticleViewSet(viewsets.ModelViewSet):
         category = self.request.query_params.get('category', None)
         if category:
             queryset = queryset.filter(category=category)
-        return queryset.order_by('-published_at')  # Add ordering
+        return queryset.order_by('-published_at')
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 def fetch_news(request):
+    if request.method == 'GET':
+        return news_list(request)
+
     try:
-        newsapi = NewsApiClient(api_key=settings.NEWS_API_KEY)  # Get API key from settings
+        # Mediastack API endpoint
+        base_url = "http://api.mediastack.com/v1/news"
         
-        categories = ['general', 'technology', 'business', 'science', 'health', 'entertainment']
+        # Categories in Mediastack
+        categories = [
+            'general', 'business', 'technology', 'science', 
+            'health', 'sports', 'entertainment'
+        ]
+        
         articles_created = 0
         articles_failed = 0
         
         for category in categories:
             try:
-                news = newsapi.get_top_headlines(
-                    category=category,
-                    language='en',
-                    page_size=10
-                )
+                # Mediastack API parameters
+                params = {
+                    'access_key': settings.MEDIASTACK_API_KEY,
+                    'categories': category,
+                    'languages': 'en',
+                    'limit': 10,
+                    'sort': 'published_desc'  # Get latest news first
+                }
                 
-                for article in news.get('articles', []):  # Safely get articles
+                response = requests.get(base_url, params=params)
+                if response.status_code != 200:
+                    raise Exception(f"API returned status code {response.status_code}")
+                
+                news_data = response.json()
+                
+                if news_data.get('error'):
+                    raise Exception(f"API error: {news_data['error']['message']}")
+                
+                for article in news_data.get('data', []):
                     try:
+                        # Check if article already exists using URL
                         if not Article.objects.filter(url=article['url']).exists():
+                            # Convert Mediastack datetime string to Python datetime
+                            published_at = datetime.strptime(
+                                article['published_at'], 
+                                '%Y-%m-%dT%H:%M:%S%z'
+                            )
+                            
                             Article.objects.create(
                                 title=article.get('title', ''),
-                                url=article['url'],
-                                source=article.get('source', {}).get('name', 'Unknown'),
+                                url=article.get('url', ''),
+                                source=article.get('source', 'Unknown'),
                                 category=category,
                                 summary=article.get('description', ''),
-                                published_at=article.get('publishedAt')
+                                published_at=published_at,
+                                # Additional Mediastack-specific fields you might want to add:
+                                # author=article.get('author', ''),
+                                # image=article.get('image', ''),
+                                # country=article.get('country', '')
                             )
                             articles_created += 1
                     except Exception as e:
                         articles_failed += 1
+                        print(f"Error creating article: {str(e)}")  # For debugging
                         
             except Exception as e:
                 return Response({
                     'error': f'Error fetching {category} news: {str(e)}',
                     'status': 'error'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-        return Response({
-            'message': f'Successfully fetched {articles_created} new articles',
-            'failed': articles_failed,
-            'status': 'success'
-        })
+        
+        # After successful fetch, redirect to template view
+        return news_list(request)
         
     except Exception as e:
         return Response({
-            'error': f'NewsAPI configuration error: {str(e)}',
+            'error': f'Mediastack API configuration error: {str(e)}',
             'status': 'error'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -79,11 +125,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         article_id = self.request.query_params.get('article_id')
         if article_id:
             queryset = queryset.filter(article_id=article_id)
-        return queryset.order_by('-created_at')  # Assuming you have a created_at field
+        return queryset.order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
         article_id = request.data.get('article_id')
-        content = request.data.get('content', '').strip()  # Strip whitespace
+        content = request.data.get('content', '').strip()
         username = request.data.get('username', 'Anonymous')
         
         if not content:

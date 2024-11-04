@@ -37,7 +37,7 @@ else:
     ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Google News API Settings
-GOOGLE_NEWS_API_KEY = config('GOOGLE_NEWS_API_KEY')
+MEDIASTACK_API_KEY  = config('MEDIASTACK_API_KEY')
 
 # Application definition
 
