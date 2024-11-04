@@ -7,6 +7,6 @@ router.register(r'articles', views.ArticleViewSet)
 router.register(r'comments', views.CommentViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('fetch-news/', views.fetch_news, name='fetch-news'),
+    # path('', include(router.urls)),
+    path('', views.fetch_news, name='fetch-news'),
 ]
