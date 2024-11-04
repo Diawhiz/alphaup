@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Category Filter -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-4">Categories</h2>
+        <div class="flex gap-2">
+            <a href="{% url 'article-list' %}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">All</a>
+            {% for category in categories %}
+                <a href="?category={{ category }}" 
+                   class="px-4 py-2 {% if current_category == category %}bg-blue-500{% else %}bg-gray-200{% endif %} rounded hover:bg-blue-600 hover:text-white">
+                    {{ category|title }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Articles List -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for article in articles %}
+        <div class="border rounded-lg shadow-lg p-6">
+            <div class="mb-4">
+                <span class="bg-gray-200 text-sm px-3 py-1 rounded-full">{{ article.category|title }}</span>
+                <span class="text-gray-500 text-sm ml-2">{{ article.published_at|date:"M d, Y" }}</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">{{ article.title }}</h2>
+            <p class="text-gray-600 mb-4">{{ article.summary|truncatewords:30 }}</p>
+            <div class="mb-4">
+                <span class="text-gray-500">Source: {{ article.source }}</span>
+            </div>
+            
+            <!-- Comments Section -->
+            <div class="mt-4 border-t pt-4">
+                <h3 class="font-bold mb-2">Comments ({{ article.comments.count }})</h3>
+                
+                <!-- Comment Form -->
+                <form class="mb-4" method="post" action="{% url 'comment-list' %}" id="comment-form-{{ article.id }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="article_id" value="{{ article.id }}">
+                    <input type="text" name="username" placeholder="Your name" 
+                           class="w-full mb-2 p-2 border rounded">
+                    <textarea name="content" placeholder="Add a comment..." 
+                            class="w-full p-2 border rounded mb-2"></textarea>
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Add Comment
+                    </button>
+                </form>
+
+                <!-- Comments List -->
+                <div class="space-y-4">
+                    {% for comment in article.comments.all %}
+                    <div class="border-l-4 border-gray-200 pl-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold">{{ comment.username }}</span>
+                            <span class="text-sm text-gray-500">
+                                {{ comment.created_at|date:"M d, Y H:i" }}
+                            </span>
+                        </div>
+                        <p class="text-gray-600">{{ comment.content }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ article.url }}" target="_blank" 
+                   class="text-blue-500 hover:text-blue-600">Read full article →</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-8">
+            <p class="text-gray-500">No articles found.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('form[id^="comment-form-"]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('{% url "comment-list" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    article_id: formData.get('article_id'),
+                    username: formData.get('username') || 'Anonymous',
+                    content: formData.get('content')
+                })
+            });
+            
+            if (response.ok) {
+                // Refresh the page to show the new comment
+                location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Error posting comment');
+            }
+        } catch (error) {
+            alert('Error posting comment');
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock content %}
