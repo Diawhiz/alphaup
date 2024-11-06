@@ -9,6 +9,14 @@ from .models import Article, Comment
 from .serializers import ArticleSerializer, CommentSerializer
 import requests
 import logging
+from bs4 import BeautifulSoup
+from newspaper import Article as NewsArticle
+import nltk
+
+try:
+    nltk.data.find('punkt')
+except LookupError:
+    nltk.download('punkt')
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -18,10 +26,9 @@ class ArticleViewSet(viewsets.ModelViewSet):
     queryset = Article.objects.all().order_by('-published_at')
     serializer_class = ArticleSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['title', 'summary', 'category', 'source']
-    
+    search_fields = ['title', 'summary', 'full_content', 'category', 'source', 'keywords']
+
     def get_queryset(self):
-        """Custom queryset to support filtering"""
         queryset = Article.objects.all().order_by('-published_at')
         category = self.request.query_params.get('category', None)
         if category:
@@ -49,18 +56,44 @@ class NewsService:
             return datetime.now()
 
     @staticmethod
-    def create_article_from_data(article_data, category):
-        """Create article from API data"""
+    def fetch_article_content(url):
+        """Fetch full article content using newspaper3k"""
         try:
+            article = NewsArticle(url)
+            article.download()
+            article.parse()
+            article.nlp()  # This generates summary, keywords, etc.
+
+            return {
+                'full_content': article.text,
+                'summary': article.summary,
+                'keywords': article.keywords,
+                'top_image': article.top_image,
+                'additional_images': article.images
+            }
+        except Exception as e:
+            logger.error(f"Error fetching article content: {str(e)}")
+            return None
+
+    @staticmethod
+    def create_article_from_data(article_data, category):
+        """Create article from API data with full content"""
+        try:
+            # Fetch full content
+            url = article_data.get('url', '')
+            content_data = NewsService.fetch_article_content(url) if url else None
+            
             return Article.objects.create(
                 title=article_data.get('title', ''),
-                url=article_data.get('url', ''),
+                url=url,
                 source=article_data.get('source', 'Unknown'),
                 category=category,
-                summary=article_data.get('description', ''),
+                summary=content_data.get('summary') if content_data else article_data.get('description', ''),
+                full_content=content_data.get('full_content') if content_data else '',
                 published_at=NewsService.parse_published_date(article_data.get('published_at')),
                 author=article_data.get('author', ''),
-                image=article_data.get('image', ''),
+                image=content_data.get('top_image') if content_data else article_data.get('image', ''),
+                keywords=','.join(content_data.get('keywords', [])) if content_data else '',
                 country=article_data.get('country', '')
             )
         except Exception as e:
@@ -70,13 +103,21 @@ class NewsService:
 def news_list(request):
     """View to display list of news articles"""
     try:
-        # Get category filter from query params
         category = request.GET.get('category', '')
+        search_query = request.GET.get('q', '')
         
         # Query articles
         articles = Article.objects.all().order_by('-published_at')
+        
         if category:
             articles = articles.filter(category=category)
+        
+        if search_query:
+            articles = articles.filter(
+                Q(title__icontains=search_query) |
+                Q(summary__icontains=search_query) |
+                Q(full_content__icontains=search_query)
+            )
         
         # Get unique categories
         categories = Article.objects.values_list('category', flat=True).distinct()
@@ -84,7 +125,8 @@ def news_list(request):
         context = {
             'articles': articles,
             'categories': categories,
-            'selected_category': category
+            'selected_category': category,
+            'search_query': search_query
         }
         
         return render(request, 'news/news_list.html', context)
