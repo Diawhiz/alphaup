@@ -55,6 +55,44 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if articles.has_other_pages %}
+    <div class="mt-8 flex justify-center">
+        <nav aria-label="Page navigation">
+            <ul class="inline-flex -space-x-px">
+                {% if articles.has_previous %}
+                    <li>
+                        <a href="?page={{ articles.previous_page_number }}" class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700">
+                        Previous
+                        </a>
+                    </li>
+                {% endif %}
+                {% for i in articles.paginator.page_range %}
+                    {% if articles.number == i %}
+                        <li>
+                            <a href="?page={{ i }}" aria-current="page" class="px-3 py-2 text-blue-600 bg-blue-50 border border-gray-300 hover:bg-blue-100 hover:text-blue-700">
+                            {{ i }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="?page={{ i }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">
+                            {{ i }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                {% if articles.has_next %}
+                    <li>
+                        <a href="?page={{ articles.next_page_number }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700">
+                        Next
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
 
 <!-- JavaScript for interaction -->

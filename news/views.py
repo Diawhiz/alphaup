@@ -11,6 +11,7 @@ import requests
 import logging
 import nltk
 from nltk.tokenize import sent_tokenize
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -93,6 +94,19 @@ class NewsService:
 
 def news_list(request):
     """View to display list of news articles"""
+    articles = Article.objects.all()
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(articles, 20)
+
+    try:
+        articles = paginator.page(page)
+    except PageNotAnInteger:
+        articles = paginator.page(1)
+    except EmptyPage:
+        articles = paginator.page(paginator.num_pages)
+
     try:
         # Get category filter from query params
         category = request.GET.get('category', '')
