@@ -17,6 +17,19 @@
         </select>
     </div>
 
+
+    <!-- At the top of your content block -->
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+
     <!-- Articles Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for article in articles %}
