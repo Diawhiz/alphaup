@@ -1,7 +1,7 @@
 # news/management/commands/generate_extended_summaries.py
 from django.core.management.base import BaseCommand
 from news.models import Article
-from news.views import NewsService
+from news.views import NewsService 
 
 class Command(BaseCommand):
     help = 'Generate extended summaries for existing articles'
