@@ -13,6 +13,10 @@ class Article(models.Model):
     author = models.CharField(max_length=255, blank=True)
     image = models.URLField(max_length=500, blank=True)
     country = models.CharField(max_length=2, blank=True)
+    extended_summary = models.TextField(
+        help_text="A comprehensive summary between 300-500 words",
+        blank=True
+    )
     
     class Meta:
         ordering = ['-published_at']

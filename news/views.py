@@ -9,6 +9,8 @@ from .models import Article, Comment
 from .serializers import ArticleSerializer, CommentSerializer
 import requests
 import logging
+import nltk
+from nltk.tokenize import sent_tokenize
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,36 +30,58 @@ class ArticleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(category=category)
         return queryset
 
+try:
+    nltk.download('punkt', quiet=True)
+except:
+    pass
+
 class NewsService:
     """Service class to handle news-related operations"""
     
     @staticmethod
-    def get_mediastack_api_key():
-        """Safely retrieve MediaStack API key from settings"""
-        api_key = getattr(settings, 'MEDIASTACK_API_KEY', None)
-        if not api_key:
-            raise ValueError('MEDIASTACK_API_KEY not configured in settings')
-        return api_key
-
-    @staticmethod
-    def parse_published_date(date_str):
-        """Parse published date from API response"""
+    def generate_extended_summary(description, content):
+        """Generate an extended summary between 300-500 words"""
         try:
-            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid date format: {date_str}")
-            return datetime.now()
+            # Combine description and content
+            full_text = f"{description} {content}"
+            
+            # Tokenize into sentences
+            sentences = sent_tokenize(full_text)
+            
+            # Initialize summary
+            extended_summary = []
+            word_count = 0
+            
+            # Add sentences until we reach desired length
+            for sentence in sentences:
+                sentence_words = len(sentence.split())
+                if word_count + sentence_words <= 500:
+                    extended_summary.append(sentence)
+                    word_count += sentence_words
+                if word_count >= 300:
+                    break
+            
+            return ' '.join(extended_summary)
+        except Exception as e:
+            logging.error(f"Error generating extended summary: {str(e)}")
+            return description  # Fallback to original description
 
     @staticmethod
     def create_article_from_data(article_data, category):
-        """Create article from API data"""
+        """Create article from API data with extended summary"""
         try:
+            # Generate extended summary
+            description = article_data.get('description', '')
+            content = article_data.get('content', '')  # Some APIs provide full content
+            extended_summary = NewsService.generate_extended_summary(description, content)
+            
             return Article.objects.create(
                 title=article_data.get('title', ''),
                 url=article_data.get('url', ''),
                 source=article_data.get('source', 'Unknown'),
                 category=category,
-                summary=article_data.get('description', ''),
+                summary=description,  # Keep original summary
+                extended_summary=extended_summary,  # Add extended summary
                 published_at=NewsService.parse_published_date(article_data.get('published_at')),
                 author=article_data.get('author', ''),
                 image=article_data.get('image', ''),
@@ -95,12 +119,11 @@ def news_list(request):
         return render(request, 'news/news_list.html', {'articles': [], 'categories': []})
 
 def article_detail(request, article_id):
-    """View to display embedded article"""
+    """View to display article details and handle comments"""
     try:
         article = get_object_or_404(Article, id=article_id)
         context = {
             'article': article,
-            'embedded_url': article.url
         }
         return render(request, 'news/article_detail.html', context)
     except Exception as e:
@@ -199,7 +222,7 @@ class CommentViewSet(viewsets.ModelViewSet):
             # Validate input
             article_id = request.data.get('article_id')
             content = request.data.get('content', '').strip()
-            username = request.data.get('username', 'Anonymous')
+            username = request.data.get('username', '').strip() or 'Anonymous'  # Default to 'Anonymous' if empty
             
             if not content:
                 return Response(

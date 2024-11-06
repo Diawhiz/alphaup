@@ -17,8 +17,11 @@ class ArticleSerializer(serializers.ModelSerializer):
 from .models import Article
 
 class ArticleSerializer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Article
-        fields = ['id', 'title', 'url', 'source', 'category', 'summary', 
-                 'published_at', 'author', 'image', 'country']
-        read_only_fields = ['published_at']  # Protect published_at from direct modification
+        fields = ['id', 'title', 'url', 'source', 'category', 
+                 'summary', 'extended_summary', 'published_at', 
+                 'author', 'image', 'country', 'comments']
+        read_only_fields = ['published_at']
