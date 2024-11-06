@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from django.contrib import messages
 from rest_framework import viewsets, status, filters
@@ -93,6 +93,20 @@ def news_list(request):
         logger.error(f"Error in news_list view: {str(e)}")
         messages.error(request, 'An error occurred while loading the news.')
         return render(request, 'news/news_list.html', {'articles': [], 'categories': []})
+
+def article_detail(request, article_id):
+    """View to display embedded article"""
+    try:
+        article = get_object_or_404(Article, id=article_id)
+        context = {
+            'article': article,
+            'embedded_url': article.url
+        }
+        return render(request, 'news/article_detail.html', context)
+    except Exception as e:
+        logger.error(f"Error in article_detail view: {str(e)}")
+        messages.error(request, 'An error occurred while loading the article.')
+        return redirect('news_list')
 
 @api_view(['GET'])
 def fetch_news(request):

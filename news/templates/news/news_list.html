@@ -1,24 +1,7 @@
 {% extends 'news/base.html' %}  {# If you have a base template #}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Latest News</h1>
-
-    <!-- Category Filter -->
-    <div class="mb-6">
-        <label class="mr-2">Filter by category:</label>
-        <select id="categoryFilter" onchange="filterByCategory(this.value)" class="p-2 border rounded">
-            <option value="">All Categories</option>
-            {% for category in categories %}
-                <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>
-                    {{ category|title }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-
-
-    <!-- At the top of your content block -->
+<!-- At the top of your content block -->
 {% if messages %}
 <div class="messages">
     {% for message in messages %}
@@ -29,54 +12,46 @@
 </div>
 {% endif %}
 
+<div class="container mx-auto px-4 py-8">
+    <!-- Categories filter -->
+    <div class="mb-8">
+        <h2 class="text-xl font-bold mb-4">Categories</h2>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'news_list' %}" 
+               class="px-4 py-2 rounded-full {% if not selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">
+                All
+            </a>
+            {% for category in categories %}
+            <a href="?category={{ category }}" 
+               class="px-4 py-2 rounded-full {% if category == selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">
+                {{ category|title }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
 
-    <!-- Articles Grid -->
+    <!-- Articles grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for article in articles %}
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="p-6">
-                <div class="text-sm text-gray-600 mb-2">
-                    {{ article.category|title }} • {{ article.published_at|date:"M d, Y" }}
-                </div>
-                <h2 class="text-xl font-semibold mb-3">{{ article.title }}</h2>
-                <p class="text-gray-700 mb-4">{{ article.summary|truncatewords:30 }}</p>
+            {% if article.image %}
+            <img src="{{ article.image }}" alt="{{ article.title }}" class="w-full h-48 object-cover">
+            {% endif %}
+            <div class="p-4">
+                <h2 class="text-xl font-bold mb-2">{{ article.title }}</h2>
+                <p class="text-gray-600 mb-4">{{ article.summary|truncatewords:30 }}</p>
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-500">{{ article.source }}</span>
-                    <a href="{{ article.url }}" target="_blank" 
-                       class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    <a href="{% url 'article_detail' article.id %}" 
+                       class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                         Read More
                     </a>
                 </div>
             </div>
-
-            <!-- Comments Section -->
-            <div class="border-t p-6">
-                <h3 class="font-semibold mb-4">Comments</h3>
-                <div class="space-y-4">
-                    {% for comment in article.comment_set.all %}
-                    <div class="bg-gray-50 p-3 rounded">
-                        <div class="font-medium">{{ comment.username }}</div>
-                        <p class="text-gray-700">{{ comment.content }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- Comment Form -->
-                <form class="mt-4" onsubmit="return addComment(event, {{ article.id }})">
-                    <input type="text" name="username" placeholder="Your name" 
-                           class="w-full p-2 border rounded mb-2">
-                    <textarea name="content" placeholder="Add a comment..." 
-                              class="w-full p-2 border rounded mb-2"></textarea>
-                    <button type="submit" 
-                            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                        Add Comment
-                    </button>
-                </form>
-            </div>
         </div>
         {% empty %}
-        <div class="col-span-full text-center py-10">
-            <p class="text-gray-600">No articles found.</p>
+        <div class="col-span-full text-center py-8">
+            <p class="text-gray-500">No articles found.</p>
         </div>
         {% endfor %}
     </div>
