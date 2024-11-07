@@ -11,7 +11,7 @@ import requests
 import logging
 import nltk
 from nltk.tokenize import sent_tokenize
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views.generic import ListView
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -92,45 +92,24 @@ class NewsService:
             logger.error(f"Error creating article: {str(e)}")
             raise
 
-def news_list(request):
-    """View to display list of news articles"""
-    articles = Article.objects.all()
-    
-    # Pagination
-    page = request.GET.get('page', 1)
-    paginator = Paginator(articles, 20)
+class NewsListView(ListView):
+    model = Article
+    template_name = 'news/news_list.html'
+    context_object_name = 'articles'
+    paginate_by = 30
 
-    try:
-        articles = paginator.page(page)
-    except PageNotAnInteger:
-        articles = paginator.page(1)
-    except EmptyPage:
-        articles = paginator.page(paginator.num_pages)
-
-    try:
-        # Get category filter from query params
-        category = request.GET.get('category', '')
-        
-        # Query articles
-        articles = Article.objects.all().order_by('-published_at')
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        category = self.request.GET.get('category', '')
         if category:
-            articles = articles.filter(category=category)
-        
-        # Get unique categories
-        categories = Article.objects.values_list('category', flat=True).distinct()
-        
-        context = {
-            'articles': articles,
-            'categories': categories,
-            'selected_category': category
-        }
-        
-        return render(request, 'news/news_list.html', context)
-    
-    except Exception as e:
-        logger.error(f"Error in news_list view: {str(e)}")
-        messages.error(request, 'An error occurred while loading the news.')
-        return render(request, 'news/news_list.html', {'articles': [], 'categories': []})
+            queryset = queryset.filter(category=category)
+        return queryset.order_by('-published_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = Article.objects.values_list('category', flat=True).distinct()
+        context['selected_category'] = self.request.GET.get('category', '')
+        return context
 
 def article_detail(request, article_id):
     """View to display article details and handle comments"""

@@ -1,34 +1,46 @@
 {% extends 'news/base.html' %}  {# If you have a base template #}
 
 {% block content %}
-<!-- At the top of your content block -->
 {% if messages %}
 <div class="messages">
-    {% for message in messages %}
-    <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative" role="alert">
-        {{ message }}
-    </div>
-    {% endfor %}
+  {% for message in messages %}
+  <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
 <div class="container mx-auto px-4 py-8">
-    <!-- Categories filter -->
-    <div class="mb-8">
-        <h2 class="text-xl font-bold mb-4">Categories</h2>
-        <div class="flex flex-wrap gap-2">
-            <a href="{% url 'news_list' %}" 
-               class="px-4 py-2 rounded-full {% if not selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">
-                All
-            </a>
-            {% for category in categories %}
-            <a href="?category={{ category }}" 
-               class="px-4 py-2 rounded-full {% if category == selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">
-                {{ category|title }}
-            </a>
-            {% endfor %}
-        </div>
+  <div class="mb-8">
+    <h2 class="text-xl font-bold mb-4">AlphaUP</h2>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'news_list' %}" class="px-4 py-2 rounded-full {% if not selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">All</a>
+      {% comment %} {% for category in categories %}
+      <a href="?category={{ category }}" class="px-4 py-2 rounded-full {% if category == selected_category %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} hover:bg-blue-600 hover:text-white transition-colors">{{ category|title }}</a>
+      {% endfor %} {% endcomment %}
     </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for article in articles %}
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      {% if article.image %}
+      <img src="{{ article.image }}" alt="{{ article.title }}" class="w-full h-48 object-cover">
+      {% endif %}
+      <div class="p-4">
+        <h3 class="text-xl font-bold mb-2">{{ article.title }}</h3>
+        <p>{{ article.summary|truncatewords:30 }}</p>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">{{ article.source }}</span>
+          <a href="{% url 'article_detail' article.id %}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Read More</a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-8">No articles found.</div>
+    {% endfor %}
+  </div>
 
     <!-- Articles grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -56,43 +68,24 @@
         {% endfor %}
     </div>
 
-    {% if articles.has_other_pages %}
-    <div class="mt-8 flex justify-center">
-        <nav aria-label="Page navigation">
-            <ul class="inline-flex -space-x-px">
-                {% if articles.has_previous %}
-                    <li>
-                        <a href="?page={{ articles.previous_page_number }}" class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700">
-                        Previous
-                        </a>
-                    </li>
-                {% endif %}
-                {% for i in articles.paginator.page_range %}
-                    {% if articles.number == i %}
-                        <li>
-                            <a href="?page={{ i }}" aria-current="page" class="px-3 py-2 text-blue-600 bg-blue-50 border border-gray-300 hover:bg-blue-100 hover:text-blue-700">
-                            {{ i }}
-                            </a>
-                        </li>
-                    {% else %}
-                        <li>
-                            <a href="?page={{ i }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">
-                            {{ i }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-                {% if articles.has_next %}
-                    <li>
-                        <a href="?page={{ articles.next_page_number }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700">
-                        Next
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
+    <!-- Pagination -->
+  {% if articles.has_other_pages %}
+    <div class="pagination">
+      {% if articles.has_previous %}
+        <a href="?page={{ articles.previous_page_number }}&category={{ selected_category }}">Previous</a>
+      {% endif %}
+      {% for i in articles.paginator.page_range %}
+        {% if articles.number == i %}
+          <span>{{ i }}</span>
+        {% else %}
+          <a href="?page={{ i }}&category={{ selected_category }}">{{ i }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if articles.has_next %}
+        <a href="?page={{ articles.next_page_number }}&category={{ selected_category }}">Next</a>
+      {% endif %}
     </div>
-    {% endif %}
+  {% endif %}
 </div>
 
 <!-- JavaScript for interaction -->
